@@ -2,7 +2,6 @@ package fs
 
 import (
 	"context"
-	"errors"
 	"os"
 	"syscall"
 	"time"
@@ -19,7 +18,6 @@ type Dir struct {
 
 var _ = (fs.Node)((*Dir)(nil))
 var _ = (fs.HandleReadDirAller)((*Dir)(nil))
-var _ = (fs.NodeSetattrer)((*Dir)(nil))
 var _ = (EntryGetter)((*Dir)(nil))
 
 func NewDir() *Dir {
@@ -66,21 +64,4 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		})
 	}
 	return entries, nil
-}
-
-func (d *Dir) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fuse.SetattrResponse) error {
-	if req.Valid.Atime() {
-		d.Attributes.Atime = req.Atime
-	}
-	if req.Valid.Mtime() {
-		d.Attributes.Mtime = req.Mtime
-	}
-	if req.Valid.Size() {
-		d.Attributes.Size = req.Size
-	}
-	return nil
-}
-
-func (d *Dir) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
-	return errors.New(errNotPermitted)
 }
