@@ -26,7 +26,7 @@ func NewDir() *Dir {
 	return &Dir{
 		Type: fuse.DT_Dir,
 		Attributes: fuse.Attr{
-			Inode: inodeCnt,
+			Inode: 0,
 			Atime: time.Now(),
 			Mtime: time.Now(),
 			Ctime: time.Now(),
@@ -56,20 +56,29 @@ func (d *Dir) GetDirentType() fuse.DirentType {
 func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	var entries []fuse.Dirent
 
-	for k, v := range d.Entries {
+	for key, value := range d.Entries {
 		var a fuse.Attr
-		v.(fs.Node).Attr(ctx, &a)
+		value.(fs.Node).Attr(ctx, &a)
 		entries = append(entries, fuse.Dirent{
 			Inode: a.Inode,
-			Type:  v.(EntryGetter).GetDirentType(),
-			Name:  k,
+			Type:  value.(EntryGetter).GetDirentType(),
+			Name:  key,
 		})
 	}
 	return entries, nil
 }
 
 func (d *Dir) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fuse.SetattrResponse) error {
-	return errors.New(errNotPermitted)
+	if req.Valid.Atime() {
+		d.Attributes.Atime = req.Atime
+	}
+	if req.Valid.Mtime() {
+		d.Attributes.Mtime = req.Mtime
+	}
+	if req.Valid.Size() {
+		d.Attributes.Size = req.Size
+	}
+	return nil
 }
 
 func (d *Dir) Remove(ctx context.Context, req *fuse.RemoveRequest) error {

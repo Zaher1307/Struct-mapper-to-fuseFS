@@ -2,7 +2,6 @@ package fs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -26,7 +25,7 @@ func NewFile(content []byte) *File {
 		Type:    fuse.DT_File,
 		Content: content,
 		Attributes: fuse.Attr{
-			Inode: inodeCnt,
+			Inode: 0,
 			Atime: time.Now(),
 			Mtime: time.Now(),
 			Ctime: time.Now(),
@@ -50,5 +49,17 @@ func (f *File) GetDirentType() fuse.DirentType {
 }
 
 func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fuse.SetattrResponse) error {
-	return errors.New(errNotPermitted)
+	if req.Valid.Atime() {
+		f.Attributes.Atime = req.Atime
+	}
+
+	if req.Valid.Mtime() {
+		f.Attributes.Mtime = req.Mtime
+	}
+
+	if req.Valid.Size() {
+		f.Attributes.Size = req.Size
+	}
+
+	return nil
 }

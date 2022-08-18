@@ -9,52 +9,24 @@ import (
 	"github.com/fatih/structs"
 )
 
-type structure struct {
-	String       string
-	Int          int
-	Bool         bool
-	SubStructure subStructure
-}
-
-type subStructure struct {
-	Float float32
-}
-
 type FS struct {
-	node fs.Node
+	userStruct any
 }
 
 type EntryGetter interface {
 	GetDirentType() fuse.DirentType
 }
 
-var (
-	inodeCnt   uint64
-	Attributes fuse.Attr
-	dataMap     map[string]any
-)
-
 const errNotPermitted = "Operation not permitted"
 
-func Mount(mountPoint string) error {
-	input := &structure{
-		String: "str",
-		Int:    18,
-		Bool:   true,
-		SubStructure: subStructure{
-			Float: 1.3,
-		},
-	}
-
+func Mount(mountPoint string, userStruct any) error {
 	c, err := fuse.Mount(mountPoint, fuse.FSName("fuse"), fuse.Subtype("tmpfs"))
 	if err != nil {
 		return err
 	}
 	defer c.Close()
 
-	dataMap = structs.Map(input)
-
-	err = fs.Serve(c, FS{})
+	err = fs.Serve(c, NewFS(userStruct))
 	if err != nil {
 		return err
 	}
@@ -62,9 +34,16 @@ func Mount(mountPoint string) error {
 	return nil
 }
 
-func (FS) Root() (fs.Node, error) {
+func NewFS(userStruct any) *FS {
+    return &FS{
+    	userStruct: userStruct,
+    }
+}
+
+func (f *FS) Root() (fs.Node, error) {
 	dir := NewDir()
-	dir.Entries = createEntries(dataMap)
+	structMap := structs.Map(f.userStruct)
+	dir.Entries = createEntries(structMap)
 	return dir, nil
 }
 
