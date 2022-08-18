@@ -2,6 +2,7 @@ package fs
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 
 	"bazil.org/fuse"
@@ -17,14 +18,18 @@ type EntryGetter interface {
 	GetDirentType() fuse.DirentType
 }
 
-const errNotPermitted = "Operation not permitted"
-
 func Mount(mountPoint string, userStruct any) error {
 	c, err := fuse.Mount(mountPoint, fuse.FSName("fuse"), fuse.Subtype("tmpfs"))
 	if err != nil {
 		return err
 	}
-	defer c.Close()
+	defer func() {
+		err := c.Close()
+		if err != nil {
+			log.Println("close: ", err)
+		}
+		fuse.Unmount(mountPoint)
+	}()
 
 	err = fs.Serve(c, NewFS(userStruct))
 	if err != nil {
@@ -35,28 +40,29 @@ func Mount(mountPoint string, userStruct any) error {
 }
 
 func NewFS(userStruct any) *FS {
-    return &FS{
-    	userStruct: userStruct,
-    }
+	return &FS{
+		userStruct: userStruct,
+	}
 }
 
 func (f *FS) Root() (fs.Node, error) {
 	dir := NewDir()
 	structMap := structs.Map(f.userStruct)
-	dir.Entries = createEntries(structMap)
+	dir.Entries = f.createEntries(structMap)
 	return dir, nil
 }
 
-func createEntries(structMap any) map[string]any {
+func (f *FS) createEntries(structMap any) map[string]any {
 	entries := map[string]any{}
 
 	for key, value := range structMap.(map[string]any) {
 		if reflect.TypeOf(value).Kind() == reflect.Map {
 			dir := NewDir()
-			dir.Entries = createEntries(value)
+			dir.Entries = f.createEntries(value)
 			entries[key] = dir
 		} else {
-			entries[key] = NewFile([]byte(fmt.Sprint(reflect.ValueOf(value))))
+			content := []byte(fmt.Sprintln(reflect.ValueOf(value)))
+			entries[key] = NewFile(key, f.userStruct, len(content))
 		}
 	}
 	return entries
