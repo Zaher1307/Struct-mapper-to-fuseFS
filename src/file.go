@@ -15,6 +15,7 @@ type File struct {
 	Type       fuse.DirentType
 	Attributes fuse.Attr
 	FileName   string
+	FilePath []string
 	StructRef  any
 }
 
@@ -23,10 +24,11 @@ var _ = (fs.HandleReadAller)((*File)(nil))
 var _ = (fs.NodeSetattrer)((*File)(nil))
 var _ = (EntryGetter)((*File)(nil))
 
-func NewFile(fileName string, structRef any, contentSize int) *File {
+func NewFile(fileName string, filePath []string, structRef any, contentSize int) *File {
 	return &File{
 		Type:    fuse.DT_File,
 		FileName: fileName,
+		FilePath: filePath,
 		StructRef: structRef,
 		Attributes: fuse.Attr{
 			Inode: 0,
@@ -69,24 +71,21 @@ func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fuse
 }
 
 func (f *File) fetchFileContent() []byte {
-    structMap := structs.Map(f.StructRef)
-    var result []byte
-    var traverse func(map[string]any)
+    var content []byte
+    var traverse func(m map[string]any, idx int)
 
-    traverse = func(m map[string]any) {
-        for key, val := range m {
-            if reflect.TypeOf(val).Kind() == reflect.Map {
-                traverse(val.(map[string]any))
-            } else {
-                if key == f.FileName {
-                    result = []byte(fmt.Sprintln(reflect.ValueOf(val)))
-                    f.Attributes.Size = uint64(len(result))
-                }
-            }
+    structMap := structs.Map(f.StructRef)
+    
+    traverse = func(m map[string]any, idx int) {
+        if idx == len(f.FilePath) {
+            content = []byte(fmt.Sprintln(reflect.ValueOf(m[f.FileName])))
+        } else {
+            traverse(m[f.FilePath[idx]].(map[string]any), idx + 1)
         }
     }
 
-    traverse(structMap)
+    traverse(structMap, 0)
+    f.Attributes.Size = uint64(len(content))
 
-    return result
+    return content
 }

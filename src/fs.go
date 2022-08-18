@@ -48,22 +48,26 @@ func NewFS(userStruct any) *FS {
 func (f *FS) Root() (fs.Node, error) {
 	dir := NewDir()
 	structMap := structs.Map(f.userStruct)
-	dir.Entries = f.createEntries(structMap)
+	dir.Entries = f.createEntries(structMap, []string{})
 	return dir, nil
 }
 
-func (f *FS) createEntries(structMap any) map[string]any {
+func (f *FS) createEntries(structMap map[string]any, currentPath []string) map[string]any {
 	entries := map[string]any{}
 
-	for key, value := range structMap.(map[string]any) {
-		if reflect.TypeOf(value).Kind() == reflect.Map {
+	for key, val := range structMap {
+		if reflect.TypeOf(val).Kind() == reflect.Map {
 			dir := NewDir()
-			dir.Entries = f.createEntries(value)
+			dir.Entries = f.createEntries(val.(map[string]any), append(currentPath, key))
 			entries[key] = dir
 		} else {
-			content := []byte(fmt.Sprintln(reflect.ValueOf(value)))
-			entries[key] = NewFile(key, f.userStruct, len(content))
+			filePath := make([]string, len(currentPath))
+			copy(filePath, currentPath)
+			content := []byte(fmt.Sprintln(reflect.ValueOf(val)))
+			file := NewFile(key, filePath, f.userStruct, len(content))
+			entries[key] = file
 		}
 	}
+
 	return entries
 }
