@@ -22,7 +22,7 @@ type subStructure struct {
 func Routine(input *structure) {
 	time.Sleep(time.Second * 5)
 	input.String = "new string"
-} 
+}
 
 func main() {
 	var err error
