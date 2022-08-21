@@ -18,6 +18,7 @@ type EntryGetter interface {
 	GetDirentType() fuse.DirentType
 }
 
+// mount your struct as a filesystem in the mount point
 func Mount(mountPoint string, userStruct any) error {
 	c, err := fuse.Mount(mountPoint, fuse.FSName("fuse"), fuse.Subtype("tmpfs"))
 	if err != nil {
@@ -31,7 +32,7 @@ func Mount(mountPoint string, userStruct any) error {
 		fuse.Unmount(mountPoint)
 	}()
 
-	err = fs.Serve(c, NewFS(userStruct))
+	err = fs.Serve(c, newFS(userStruct))
 	if err != nil {
 		return err
 	}
@@ -39,32 +40,34 @@ func Mount(mountPoint string, userStruct any) error {
 	return nil
 }
 
-func NewFS(userStruct any) *FS {
+// creating new filesystem
+func newFS(userStruct any) *FS {
 	return &FS{
 		userStruct: userStruct,
 	}
 }
 
 func (f *FS) Root() (fs.Node, error) {
-	dir := NewDir()
+	dir := newDir()
 	structMap := structs.Map(f.userStruct)
 	dir.Entries = f.createEntries(structMap, []string{})
 	return dir, nil
 }
 
+// recursive function to create file system entries(files, dirs) from user struct 
 func (f *FS) createEntries(structMap map[string]any, currentPath []string) map[string]any {
 	entries := map[string]any{}
 
 	for key, val := range structMap {
 		if reflect.TypeOf(val).Kind() == reflect.Map {
-			dir := NewDir()
+			dir := newDir()
 			dir.Entries = f.createEntries(val.(map[string]any), append(currentPath, key))
 			entries[key] = dir
 		} else {
 			filePath := make([]string, len(currentPath))
 			copy(filePath, currentPath)
 			content := []byte(fmt.Sprintln(reflect.ValueOf(val)))
-			file := NewFile(key, filePath, f.userStruct, len(content))
+			file := newFile(key, filePath, f.userStruct, len(content))
 			entries[key] = file
 		}
 	}

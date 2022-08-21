@@ -20,7 +20,8 @@ var _ = (fs.Node)((*Dir)(nil))
 var _ = (fs.HandleReadDirAller)((*Dir)(nil))
 var _ = (EntryGetter)((*Dir)(nil))
 
-func NewDir() *Dir {
+// create new directory 
+func newDir() *Dir {
 	return &Dir{
 		Type: fuse.DT_Dir,
 		Attributes: fuse.Attr{

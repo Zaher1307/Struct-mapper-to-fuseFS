@@ -24,7 +24,8 @@ var _ = (fs.HandleReadAller)((*File)(nil))
 var _ = (fs.NodeSetattrer)((*File)(nil))
 var _ = (EntryGetter)((*File)(nil))
 
-func NewFile(fileName string, filePath []string, structRef any, contentSize int) *File {
+// create new file
+func newFile(fileName string, filePath []string, structRef any, contentSize int) *File {
 	return &File{
 		Type:      fuse.DT_File,
 		FileName:  fileName,
@@ -70,6 +71,7 @@ func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fuse
 	return nil
 }
 
+// recursive function for fetching file content from struct reference
 func (f *File) fetchFileContent() []byte {
 	var content []byte
 	var traverse func(m map[string]any, idx int)
