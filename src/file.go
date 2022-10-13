@@ -15,6 +15,7 @@ type File struct {
 	Type       fuse.DirentType
 	Attributes fuse.Attr
 	FileName   string
+	Content    []byte
 	FilePath   []string
 	StructRef  any
 }
@@ -43,12 +44,15 @@ func newFile(fileName string, filePath []string, structRef any, contentSize int)
 }
 
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
+	f.updateFileContent()
 	*a = f.Attributes
 	return nil
 }
 
 func (f *File) ReadAll(ctx context.Context) ([]byte, error) {
-	return f.fetchFileContent(), nil
+	f.updateFileContent()
+	f.Attributes.Atime = time.Now()
+	return f.Content, nil
 }
 
 func (f *File) GetDirentType() fuse.DirentType {
@@ -72,22 +76,14 @@ func (f *File) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fuse
 }
 
 // recursive function for fetching file content from struct reference
-func (f *File) fetchFileContent() []byte {
-	var content []byte
-	var traverse func(m map[string]any, idx int)
-
+func (f *File) updateFileContent() {
 	structMap := structs.Map(f.StructRef)
 
-	traverse = func(m map[string]any, idx int) {
-		if idx == len(f.FilePath) {
-			content = []byte(fmt.Sprintln(reflect.ValueOf(m[f.FileName])))
-		} else {
-			traverse(m[f.FilePath[idx]].(map[string]any), idx+1)
-		}
+	for _, part := range f.FilePath {
+		structMap = structMap[part].(map[string]any)
 	}
+	content := []byte(fmt.Sprintln(reflect.ValueOf(structMap[f.FileName])))
 
-	traverse(structMap, 0)
+	f.Content = content
 	f.Attributes.Size = uint64(len(content))
-
-	return content
 }
