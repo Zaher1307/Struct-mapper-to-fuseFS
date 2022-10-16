@@ -2,7 +2,7 @@ name: FuseFS test
 
 on:
   push:
-    branches: [ development ]
+    branches: [ main ]
 
 jobs:
 
